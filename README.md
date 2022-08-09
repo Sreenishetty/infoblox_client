@@ -120,6 +120,6 @@ What you get back is a ```FixedAddressV4``` object.
 ## Objects Interface
 All top level objects support interface for CRUD operations. List of supported objects is defined in next section.
 
-- ```##create(cls, connector, check_if_exists=True, update_if_exists=False, **kwargs)##```
+- #```create(cls, connector, check_if_exists=True, update_if_exists=False, **kwargs)```#
 Creates object on NIOS side. Requires connector passed as the first argument, check_if_exists and update_if_exists are optional. Object related fields are passed in as kwargs: field=value, field2=value2.
 
