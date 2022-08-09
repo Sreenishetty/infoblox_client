@@ -120,6 +120,124 @@ What you get back is a ```FixedAddressV4``` object.
 ## Objects Interface
 All top level objects support interface for CRUD operations. List of supported objects is defined in next section.
 
-- #```create(cls, connector, check_if_exists=True, update_if_exists=False, **kwargs)```#
+-  ```create(cls, connector, check_if_exists=True, update_if_exists=False, **kwargs)```
 Creates object on NIOS side. Requires connector passed as the first argument, check_if_exists and update_if_exists are optional. Object related fields are passed in as kwargs: field=value, field2=value2.
 
+- ``` search(cls, connector, return_fields=None, search_extattrs=None, force_proxy=False, **kwargs)```
+Search single object on NIOS side, returns first object that match search criteria. Requires connector passed as the first argument. ```return_fields``` can be set to retrieve particular fields from NIOS, for example ```return_fields=['view', 'name']```. If return_fields is [] default ```return_fields``` are returned by NIOS side for current wapi_version. ```search_extattrs``` is used to filter out results by extensible attributes. ```force_proxy``` forces search request to be processed on Grid Master (applies only in cloud environment)
+
+- ```search_all(cls, connector, return_fields=None, search_extattrs=None, force_proxy=False, **kwargs)```
+Search all objects on NIOS side that match search criteria. Returns a list of objects. All other options are equal to search().
+
+- ```update(self)```
+Update the object on NIOS side by pushing changes done in the local object.
+- ```delete(self)```
+Deletes the object from NIOS side.
+
+
+# Search by regular expression3 
+Search for partial match is supported only by low-level API for now. Use '~' with field name to search by regular expressions. Not all fields support search by regular expression. Refer to wapidoc to find out complete list of fields that can be searched this way. Examples:
+
+Find all networks that starts with '10.10.':
+```
+conn = connector.Connector(opts)
+nw = conn.get_object('network', {'network~': '10.10.'})
+```
+
+Find all host records that starts with '10.10.':
+```
+conn = connector.Connector(opts)
+hr = conn.get_object('record:host', {'ipv4addr~': '10.10.'})
+```
+
+# More examples
+Utilizing extensible attributes and searching on them can easily be done with the ```get_object`` function. The ```default``` field in ```return_fields``` acts like the + does in WAPI.
+
+```> _return_fields+``` Specified list of fields (comma separated) will be returned in addition to the basic fields of the object (documented for each object).
+This enables you to always get the default values in return, in addition to what you specify whether you search for a ```network``` or a ```networkcontainer```, defined as place_to_check in the code below.
+
+```
+from infoblox_client.connector import Connector
+
+
+def default_infoblox_connection():
+    opts = {'host': '192.168.1.10', 'username': 'admin', 'password': 'admin'}
+    conn = Connector(opts)
+    return conn
+
+def search_extensible_attribute(connection, place_to_check: str, extensible_attribute: str, value: str):
+    """
+    Find extensible attributes.
+    :param connection: Infoblox connection
+    :param place_to_check: Can be `network`, `networkcontainer` or `record:host` and so on.
+    :param extensible_attribute: Which extensible attribute to search for. Can be `CustomerCode`, `Location`
+    and so on.
+    :param value: The value you want to search for.
+    :return: result
+    """
+    extensible_args = [
+        place_to_check,
+        {
+            f"*{extensible_attribute}:~": value,
+        }
+    ]
+    kwargs = {
+        'return_fields': [
+            'default',
+            'extattrs',
+        ]
+    }
+    result = {"type": f"{place_to_check}", "objects": connection.get_object(*extensible_args, **kwargs)}
+    return result
+
+connection = default_infoblox_connection()
+
+search_network = search_extensible_attribute(connection, "network", "CustomerCode", "Infoblox")
+# Print the output:
+print(search_network)
+{
+  "type": "network",
+  "objects": [
+    {
+      "_ref": "network/ZG5zLmhvc3QkLjQuY29tLm15X3pvbmUubXlfaG9zdF9yZWNvcmQ:192.168.1.1/28/default",
+      "comment": "Infoblox Network",
+      "extattrs": {
+        "CustomerCode": {
+          "value": "Infoblox"
+        }
+      },
+      "network": "192.168.1.0/28",
+      "network_view": "default"
+    }
+  ]
+}
+
+search_host = search_extensible_attribute(connection, "record:host", "CustomerCode", "Infoblox")
+# Print the output:
+print(search_host)
+{
+  "type": "record:host",
+  "objects": [
+    {
+      "_ref": "record:host/ZG5zLm5ldHdvcmtfdmlldyQw:InfobloxHost",
+      "extattrs": {
+        "CustomerCode": {
+          "value": "Infoblox"
+        }
+      },
+      "ipv4addrs": [
+        {
+          "_ref": "record:host_ipv4addr/ZG5zLm5ldHdvcmtfdmlldyQwdvcmtfdmlldyQw:192.168.1.1/InfobloxHost",
+          "configure_for_dhcp": false,
+          "host": "InfobloxHost",
+          "ipv4addr": "192.168.1.1"
+        }
+      ],
+      "name": "InfobloxHost",
+      "view": " "
+    }
+  ]
+}
+```
+# Features
+- TODO
